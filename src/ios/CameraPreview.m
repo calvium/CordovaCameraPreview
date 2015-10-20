@@ -280,7 +280,6 @@
                 } else {
                      previewPicturePath = [assetURL absoluteString];
                      NSLog(@"previewPicturePath: %@", previewPicturePath);
-                                  }
                      dispatch_group_leave(group);
                 }
             }];
