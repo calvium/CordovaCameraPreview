@@ -188,12 +188,12 @@ public class CameraActivity extends Fragment {
 	        });
         }
     }
-	
+
     private void setDefaultCameraId(){
-		
+
 		// Find the total number of cameras available
         numberOfCameras = Camera.getNumberOfCameras();
-		
+
 		int camId = defaultCamera.equals("front") ? Camera.CameraInfo.CAMERA_FACING_FRONT : Camera.CameraInfo.CAMERA_FACING_BACK;
 
 		// Find the ID of the default camera
@@ -206,7 +206,7 @@ public class CameraActivity extends Fragment {
 			}
 		}
 	}
-	
+
     @Override
     public void onResume() {
         super.onResume();
@@ -310,14 +310,14 @@ public class CameraActivity extends Fragment {
         canvas.drawBitmap(bitmap, -rect.left, -rect.top, null);
         return ret;
     }
-	
+
 	public void takePicture(final double maxWidth, final double maxHeight){
 		final ImageView pictureView = (ImageView) view.findViewById(getResources().getIdentifier("picture_view", "id", appResourcesPackage));
 		if(mPreview != null) {
-			
+
 			if(!canTakePicture)
 				return;
-			
+
 			canTakePicture = false;
 
 			mPreview.setOneShotPreviewCallback(new Camera.PreviewCallback() {
@@ -474,7 +474,7 @@ public class CameraActivity extends Fragment {
 		}
 		return inSampleSize;
 	}
-	
+
     private Bitmap loadBitmapFromView(View v) {
         Bitmap b = Bitmap.createBitmap( v.getMeasuredWidth(), v.getMeasuredHeight(), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(b);
@@ -482,7 +482,7 @@ public class CameraActivity extends Fragment {
         v.draw(c);
         return b;
     }
-    
+
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -676,41 +676,16 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
         }
     }
     private Camera.Size getOptimalPreviewSize(List<Camera.Size> sizes, int w, int h) {
-        final double ASPECT_TOLERANCE = 0.1;
-        double targetRatio = (double) w / h;
-        if (displayOrientation == 90 || displayOrientation == 270) {
-            targetRatio = (double) h / w;
-        }
-        if (sizes == null) return null;
-
-        Camera.Size optimalSize = null;
-        double minDiff = Double.MAX_VALUE;
-
-        int targetHeight = h;
-
-        // Try to find an size match aspect ratio and size
-        for (Camera.Size size : sizes) {
-            double ratio = (double) size.width / size.height;
-            if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE) continue;
-            if (Math.abs(size.height - targetHeight) < minDiff) {
-                optimalSize = size;
-                minDiff = Math.abs(size.height - targetHeight);
-            }
-        }
-
-        // Cannot find the one match the aspect ratio, ignore the requirement
-        if (optimalSize == null) {
-            minDiff = Double.MAX_VALUE;
-            for (Camera.Size size : sizes) {
-                if (Math.abs(size.height - targetHeight) < minDiff) {
-                    optimalSize = size;
-                    minDiff = Math.abs(size.height - targetHeight);
-                }
-            }
-        }
-
-        Log.d(TAG, "optimal preview size: w: " + optimalSize.width + " h: " + optimalSize.height);
-        return optimalSize;
+			int maxWidth = 0;
+			Camera.Size optimalSize = null;
+			for (Camera.Size size : sizes)
+			{
+				if (size.width >maxWidth){
+					maxWidth = size.width;
+					optimalSize = size;
+				}
+			}
+			return optimalSize;
     }
 
     public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
