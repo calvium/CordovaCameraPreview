@@ -198,8 +198,8 @@
                                                                           NSLog(@"Done creating still image");
                                                                           if (error) {
                                                                               NSLog(@"%@", error);
-                                                                              [self.commandDelegate resultWithStatus:CDVCommandStatus_ERROR
-                                                                                                     messageAsString:@"Error capturing image: %@", error.localizedDescription];
+                                                                              CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Camera not started"];
+                                                                              [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 
                                                                           } else {
                                                                               NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:sampleBuffer];
