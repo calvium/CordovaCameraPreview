@@ -190,138 +190,160 @@
 - (void) invokeTakePicture {
     [self invokeTakePicture:0.0 withHeight:0.0];
 }
-- (void) invokeTakePicture:(CGFloat) maxWidth withHeight:(CGFloat) maxHeight {
+
+- (void)invokeTakePicture:(CGFloat)maxWidth withHeight:(CGFloat)maxHeight {
     AVCaptureConnection *connection = [self.sessionManager.stillImageOutput connectionWithMediaType:AVMediaTypeVideo];
-    [self.sessionManager.stillImageOutput captureStillImageAsynchronouslyFromConnection:connection completionHandler:^(CMSampleBufferRef sampleBuffer, NSError *error) {
-        NSLog(@"Done creating still image");
-        if (error) {
-            NSLog(@"%@", error);
-        } else {
-            NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:sampleBuffer];
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0),^{
+    [self.sessionManager.stillImageOutput captureStillImageAsynchronouslyFromConnection:connection
+                                                                      completionHandler:^(CMSampleBufferRef sampleBuffer, NSError *error) {
+                                                                          NSLog(@"Done creating still image");
+                                                                          if (error) {
+                                                                              NSLog(@"%@", error);
+                                                                              [self.commandDelegate resultWithStatus:CDVCommandStatus_ERROR
+                                                                                                     messageAsString:@"Error capturing image: %@", error.localizedDescription];
 
-                [self.cameraRenderController.renderLock lock];
-            CIImage *previewCImage = self.cameraRenderController.latestFrame;
-            CGImageRef __block previewImage = [self.cameraRenderController.ciContext createCGImage:previewCImage fromRect:previewCImage.extent];
-            [self.cameraRenderController.renderLock unlock];
+                                                                          } else {
+                                                                              NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:sampleBuffer];
+                                                                              dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
 
-            UIImage *capturedImage  = [[UIImage alloc] initWithData:imageData];
-            CIImage *capturedCImage;
-            //image resize
-            
-            if(maxWidth > 0 && maxHeight > 0){
-                CGFloat scaleHeight = maxWidth/capturedImage.size.height;
-                CGFloat scaleWidth = maxHeight/capturedImage.size.width;
-                CGFloat scale = scaleHeight > scaleWidth ? scaleWidth : scaleHeight;
+                                                                                  [self.cameraRenderController.renderLock lock];
+                                                                                  CIImage *previewCImage = self.cameraRenderController.latestFrame;
+                                                                                  CGImageRef __block previewImage = [self.cameraRenderController.ciContext createCGImage:previewCImage
+                                                                                                                                                                fromRect:previewCImage.extent];
+                                                                                  [self.cameraRenderController.renderLock unlock];
 
-                CIFilter *resizeFilter = [CIFilter filterWithName:@"CILanczosScaleTransform"];
-                [resizeFilter setValue:[[CIImage alloc] initWithCGImage:[capturedImage CGImage]] forKey:kCIInputImageKey];
-                [resizeFilter setValue:[NSNumber numberWithFloat:1.0f] forKey:@"inputAspectRatio"];
-                [resizeFilter setValue:[NSNumber numberWithFloat:scale] forKey:@"inputScale"];
-                capturedCImage = [resizeFilter outputImage];
-            }
-            else{
-                capturedCImage = [[CIImage alloc] initWithCGImage:[capturedImage CGImage]];
-            }
-            
-            CIImage *imageToFilter;
-            CIImage *finalCImage;
-            
-            //fix front mirroring
-            if (self.sessionManager.defaultCamera == AVCaptureDevicePositionFront) {
-               CGAffineTransform matrix = CGAffineTransformTranslate(CGAffineTransformMakeScale(1, -1), 0, capturedCImage.extent.size.height);
-               imageToFilter = [capturedCImage imageByApplyingTransform:matrix]; 
-            } else {
-               imageToFilter = capturedCImage;                    
-            }
+                                                                                  UIImage *capturedImage = [[UIImage alloc] initWithData:imageData];
+                                                                                  CIImage *capturedCImage;
+                                                                                  //image resize
 
-            CIFilter *filter = [self.sessionManager ciFilter];
-            if (filter != nil) {
-                [self.sessionManager.filterLock lock];
-                [filter setValue:imageToFilter forKey:kCIInputImageKey];
-                finalCImage = [filter outputImage];
-                [self.sessionManager.filterLock unlock];
-            } else {
-                finalCImage = imageToFilter;
-            }
- 
-            CGImageRef __block finalImage = [self.cameraRenderController.ciContext createCGImage:finalCImage fromRect:finalCImage.extent];
+                                                                                  if (maxWidth > 0 && maxHeight > 0) {
+                                                                                      CGFloat scaleHeight = maxWidth / capturedImage.size.height;
+                                                                                      CGFloat scaleWidth = maxHeight / capturedImage.size.width;
+                                                                                      CGFloat scale = scaleHeight > scaleWidth ? scaleWidth : scaleHeight;
 
-            ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
+                                                                                      CIFilter *resizeFilter = [CIFilter filterWithName:@"CILanczosScaleTransform"];
+                                                                                      [resizeFilter setValue:[[CIImage alloc] initWithCGImage:[capturedImage CGImage]]
+                                                                                                      forKey:kCIInputImageKey];
+                                                                                      [resizeFilter setValue:[NSNumber numberWithFloat:1.0f]
+                                                                                                      forKey:@"inputAspectRatio"];
+                                                                                      [resizeFilter setValue:[NSNumber numberWithFloat:scale]
+                                                                                                      forKey:@"inputScale"];
+                                                                                      capturedCImage = [resizeFilter outputImage];
+                                                                                  }
+                                                                                  else {
+                                                                                      capturedCImage = [[CIImage alloc] initWithCGImage:[capturedImage CGImage]];
+                                                                                  }
 
-            dispatch_group_t group = dispatch_group_create();
+                                                                                  CIImage *imageToFilter;
+                                                                                  CIImage *finalCImage;
 
-            __block NSString *originalPicturePath;
-            __block NSString *previewPicturePath;
-                         __block NSError *photosAlbumError;
+                                                                                  //fix front mirroring
+                                                                                  if (self.sessionManager.defaultCamera == AVCaptureDevicePositionFront) {
+                                                                                      CGAffineTransform matrix = CGAffineTransformTranslate(CGAffineTransformMakeScale(1, -1), 0, capturedCImage.extent.size.height);
+                                                                                      imageToFilter = [capturedCImage imageByApplyingTransform:matrix];
+                                                                                  } else {
+                                                                                      imageToFilter = capturedCImage;
+                                                                                  }
 
-            ALAssetOrientation orientation;
-            switch ([[UIApplication sharedApplication] statusBarOrientation]) {
-                case UIDeviceOrientationPortraitUpsideDown:
-                    orientation = ALAssetOrientationLeft;
-                    break;
-                case UIDeviceOrientationLandscapeLeft:
-                    orientation = ALAssetOrientationUp;
-                    break;
-                case UIDeviceOrientationLandscapeRight:
-                    orientation = ALAssetOrientationDown;
-                    break;
-                case UIDeviceOrientationPortrait:
-                default:
-                    orientation = ALAssetOrientationRight;
-            }
+                                                                                  CIFilter *filter = [self.sessionManager ciFilter];
+                                                                                  if (filter != nil) {
+                                                                                      [self.sessionManager.filterLock lock];
+                                                                                      [filter setValue:imageToFilter
+                                                                                                forKey:kCIInputImageKey];
+                                                                                      finalCImage = [filter outputImage];
+                                                                                      [self.sessionManager.filterLock unlock];
+                                                                                  } else {
+                                                                                      finalCImage = imageToFilter;
+                                                                                  }
 
-            // task 1
-            dispatch_group_enter(group);
-            [library writeImageToSavedPhotosAlbum:previewImage orientation:ALAssetOrientationUp completionBlock:^(NSURL *assetURL, NSError *error) {
-                CGImageRelease(previewImage);
-                previewImage = nil;
-                if (error) {
-                     NSLog(@"FAILED to save Preview picture.");
-                                          photosAlbumError = error;
-                } else {
-                     previewPicturePath = [assetURL absoluteString];
-                     NSLog(@"previewPicturePath: %@", previewPicturePath);
-                     dispatch_group_leave(group);
-                }
-            }];
-                
-            //task 2
-            dispatch_group_enter(group);
-            [library writeImageToSavedPhotosAlbum:finalImage orientation:orientation completionBlock:^(NSURL *assetURL, NSError *error) {
-                CGImageRelease(finalImage);
-                finalImage = nil;
-                if (error) {
-                    NSLog(@"FAILED to save Original picture.");
-                                          photosAlbumError = error;
-                } else {
-                    originalPicturePath = [assetURL absoluteString];
-                    NSLog(@"originalPicturePath: %@", originalPicturePath);
-                }
-                dispatch_group_leave(group);
-            }];
+                                                                                  CGImageRef __block finalImage = [self.cameraRenderController.ciContext createCGImage:finalCImage
+                                                                                                                                                              fromRect:finalCImage.extent];
 
-            dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-                NSMutableArray *params = [[NSMutableArray alloc] init];
-                                if (photosAlbumError) {
-                                        // Error returns just one element in the returned array
-                                        NSString * remedy = @"";
-                                        if (-3311 == [photosAlbumError code]) {
-                                                remedy = @"Go to Settings > CodeStudio and allow access to Photos";
-                                        }
-                                        [params addObject:[NSString stringWithFormat:@"CameraPreview: %@ - %@ — %@", [photosAlbumError localizedDescription], [photosAlbumError localizedFailureReason], remedy]];
-                                } else {
-                                        // Success returns two elements in the returned array
-                [params addObject:originalPicturePath];
-                [params addObject:previewPicturePath];
-                                }
-             
-                CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
-                [pluginResult setKeepCallbackAsBool:true];
-                [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onPictureTakenHandlerId];
-            });
-       });}
-    }];
-//                                                                                  TODO: change the to pass the error as a cordova error
+                                                                                  ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
+
+                                                                                  dispatch_group_t group = dispatch_group_create();
+
+                                                                                  __block NSString *originalPicturePath;
+                                                                                  __block NSString *previewPicturePath;
+                                                                                  __block NSError *photosAlbumError;
+
+                                                                                  ALAssetOrientation orientation;
+                                                                                  switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+                                                                                      case UIDeviceOrientationPortraitUpsideDown:
+                                                                                          orientation = ALAssetOrientationLeft;
+                                                                                          break;
+                                                                                      case UIDeviceOrientationLandscapeLeft:
+                                                                                          orientation = ALAssetOrientationUp;
+                                                                                          break;
+                                                                                      case UIDeviceOrientationLandscapeRight:
+                                                                                          orientation = ALAssetOrientationDown;
+                                                                                          break;
+                                                                                      case UIDeviceOrientationPortrait:
+                                                                                      default:
+                                                                                          orientation = ALAssetOrientationRight;
+                                                                                  }
+
+                                                                                  // task 1
+                                                                                  dispatch_group_enter(group);
+                                                                                  [library writeImageToSavedPhotosAlbum:previewImage
+                                                                                                            orientation:ALAssetOrientationUp
+                                                                                                        completionBlock:^(NSURL *assetURL, NSError *error) {
+                                                                                                            CGImageRelease(previewImage);
+                                                                                                            previewImage = nil;
+                                                                                                            if (error) {
+                                                                                                                NSLog(@"FAILED to save Preview picture.");
+                                                                                                                photosAlbumError = error;
+                                                                                                            } else {
+                                                                                                                previewPicturePath = [assetURL absoluteString];
+                                                                                                                NSLog(@"previewPicturePath: %@", previewPicturePath);
+                                                                                                                dispatch_group_leave(group);
+                                                                                                            }
+                                                                                                        }];
+
+                                                                                  //task 2
+                                                                                  dispatch_group_enter(group);
+                                                                                  [library writeImageToSavedPhotosAlbum:finalImage
+                                                                                                            orientation:orientation
+                                                                                                        completionBlock:^(NSURL *assetURL, NSError *error) {
+                                                                                                            CGImageRelease(finalImage);
+                                                                                                            finalImage = nil;
+                                                                                                            if (error) {
+                                                                                                                NSLog(@"FAILED to save Original picture.");
+                                                                                                                photosAlbumError = error;
+                                                                                                            } else {
+                                                                                                                originalPicturePath = [assetURL absoluteString];
+                                                                                                                NSLog(@"originalPicturePath: %@", originalPicturePath);
+                                                                                                            }
+                                                                                                            dispatch_group_leave(group);
+                                                                                                        }];
+
+                                                                                  dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+                                                                                      NSMutableArray *params = [[NSMutableArray alloc] init];
+                                                                                      if (photosAlbumError) {
+                                                                                          // Error returns just one element in the returned array
+                                                                                          NSString *remedy = @"";
+                                                                                          if (-3311 == [photosAlbumError code]) {
+                                                                                              remedy = @"Go to Settings > CodeStudio and allow access to Photos";
+                                                                                          }
+                                                                                          [params addObject:[NSString stringWithFormat:@"CameraPreview: %@ - %@ — %@",
+                                                                                                                                       [photosAlbumError localizedDescription],
+                                                                                                                                       [photosAlbumError localizedFailureReason],
+                                                                                                                                       remedy]];
+                                                                                      } else {
+                                                                                          // Success returns two elements in the returned array
+                                                                                          [params addObject:originalPicturePath];
+                                                                                          [params addObject:previewPicturePath];
+                                                                                      }
+
+                                                                                      CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                                                                                                                         messageAsArray:params];
+                                                                                      [pluginResult setKeepCallbackAsBool:true];
+                                                                                      [self.commandDelegate sendPluginResult:pluginResult
+                                                                                                                  callbackId:self.onPictureTakenHandlerId];
+                                                                                  });
+                                                                              });
+                                                                          }
+
+                                                                      }];
+
 }
 @end
