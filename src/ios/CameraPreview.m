@@ -199,7 +199,7 @@
                                                                           if (error) {
                                                                               NSLog(@"%@", error);
                                                                               CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Camera not started"];
-                                                                              [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+                                                                              [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onPictureTakenHandlerId];
 
                                                                           } else {
                                                                               NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:sampleBuffer];
