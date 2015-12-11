@@ -190,20 +190,19 @@
 - (void) invokeTakePicture:(CGFloat) maxWidth withHeight:(CGFloat) maxHeight {
     AVCaptureConnection *connection = [self.sessionManager.stillImageOutput connectionWithMediaType:AVMediaTypeVideo];
     [self.sessionManager.stillImageOutput captureStillImageAsynchronouslyFromConnection:connection completionHandler:^(CMSampleBufferRef sampleBuffer, NSError *error) {
-        
         NSLog(@"Done creating still image");
-        
         if (error) {
             NSLog(@"%@", error);
         } else {
-            [self.cameraRenderController.renderLock lock];
+            NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:sampleBuffer];
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0),^{
+
+                [self.cameraRenderController.renderLock lock];
             CIImage *previewCImage = self.cameraRenderController.latestFrame;
             CGImageRef __block previewImage = [self.cameraRenderController.ciContext createCGImage:previewCImage fromRect:previewCImage.extent];
             [self.cameraRenderController.renderLock unlock];
 
-            NSData *imageData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:sampleBuffer];
             UIImage *capturedImage  = [[UIImage alloc] initWithData:imageData];
-            
             CIImage *capturedCImage;
             //image resize
             
@@ -318,7 +317,8 @@
                 [pluginResult setKeepCallbackAsBool:true];
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onPictureTakenHandlerId];
             });
-        }
+       });}
     }];
+//                                                                                  TODO: change the to pass the error as a cordova error
 }
 @end
